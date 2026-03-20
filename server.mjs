@@ -35,6 +35,9 @@ let stationOffset = 0;
 let sweepState = {
   hottest: null,
   coldest: null,
+  windiest: null,
+  highestPressure: null,
+  lowestPressure: null,
   scannedStations: 0,
   validObservations: 0,
   slicesCompleted: 0,
@@ -47,6 +50,9 @@ let latestData = {
   updatedAt: null,
   hottest: null,
   coldest: null,
+  windiest: null,
+  highestPressure: null,
+  lowestPressure: null,
   loading: true,
   error: null,
   cycleStationsScanned: 0,
@@ -168,6 +174,16 @@ function isFresh(timestampString) {
   return Date.now() - obsTime <= MAX_OBSERVATION_AGE_MS;
 }
 
+function mpsToMph(mps) {
+  if (mps == null) return null;
+  return mps * 2.23694;
+}
+
+function paToInHg(pa) {
+  if (pa == null) return null;
+  return pa * 0.0002953;
+}
+
 async function getLatestObservation(station) {
   try {
     const url = `https://api.weather.gov/stations/${station.id}/observations/latest`;
@@ -186,13 +202,24 @@ async function getLatestObservation(station) {
     if (props.temperature?.value == null) return null;
     if (!isFresh(props.timestamp)) return null;
 
+    const windGustMps = props.windGust?.value ?? null;
+    const barometricPressurePa = props.barometricPressure?.value ?? null;
+
     return {
       stationId: station.id,
       stationName: station.name,
       latitude: station.latitude,
       longitude: station.longitude,
+
       temperatureC: props.temperature.value,
       temperatureF: (props.temperature.value * 9) / 5 + 32,
+
+      windGustMps,
+      windGustMph: mpsToMph(windGustMps),
+
+      barometricPressurePa,
+      barometricPressureInHg: paToInHg(barometricPressurePa),
+
       timestamp: props.timestamp,
       textDescription: props.textDescription || "",
       forecast: props.forecast || null
@@ -226,6 +253,29 @@ function updateSweepExtremes(observations) {
 
     if (!sweepState.coldest || obs.temperatureC < sweepState.coldest.temperatureC) {
       sweepState.coldest = obs;
+    }
+
+    if (
+      obs.windGustMph != null &&
+      (!sweepState.windiest || obs.windGustMph > sweepState.windiest.windGustMph)
+    ) {
+      sweepState.windiest = obs;
+    }
+
+    if (
+      obs.barometricPressureInHg != null &&
+      (!sweepState.highestPressure ||
+        obs.barometricPressureInHg > sweepState.highestPressure.barometricPressureInHg)
+    ) {
+      sweepState.highestPressure = obs;
+    }
+
+    if (
+      obs.barometricPressureInHg != null &&
+      (!sweepState.lowestPressure ||
+        obs.barometricPressureInHg < sweepState.lowestPressure.barometricPressureInHg)
+    ) {
+      sweepState.lowestPressure = obs;
     }
   }
 }
@@ -271,6 +321,9 @@ function resetSweep() {
   sweepState = {
     hottest: null,
     coldest: null,
+    windiest: null,
+    highestPressure: null,
+    lowestPressure: null,
     scannedStations: 0,
     validObservations: 0,
     slicesCompleted: 0,
@@ -293,6 +346,27 @@ async function finalizeSweep(totalStationsAvailable) {
     sweepState.coldest.longitude
   );
 
+  const windiestLocation = sweepState.windiest
+    ? await getLocationName(
+        sweepState.windiest.latitude,
+        sweepState.windiest.longitude
+      )
+    : null;
+
+  const highestPressureLocation = sweepState.highestPressure
+    ? await getLocationName(
+        sweepState.highestPressure.latitude,
+        sweepState.highestPressure.longitude
+      )
+    : null;
+
+  const lowestPressureLocation = sweepState.lowestPressure
+    ? await getLocationName(
+        sweepState.lowestPressure.latitude,
+        sweepState.lowestPressure.longitude
+      )
+    : null;
+
   sweepState.hottest.locationName =
     hottestLocation ||
     sweepState.hottest.stationName ||
@@ -303,12 +377,36 @@ async function finalizeSweep(totalStationsAvailable) {
     sweepState.coldest.stationName ||
     sweepState.coldest.stationId;
 
+  if (sweepState.windiest) {
+    sweepState.windiest.locationName =
+      windiestLocation ||
+      sweepState.windiest.stationName ||
+      sweepState.windiest.stationId;
+  }
+
+  if (sweepState.highestPressure) {
+    sweepState.highestPressure.locationName =
+      highestPressureLocation ||
+      sweepState.highestPressure.stationName ||
+      sweepState.highestPressure.stationId;
+  }
+
+  if (sweepState.lowestPressure) {
+    sweepState.lowestPressure.locationName =
+      lowestPressureLocation ||
+      sweepState.lowestPressure.stationName ||
+      sweepState.lowestPressure.stationId;
+  }
+
   latestData = {
     scannedStations: sweepState.scannedStations,
     validObservations: sweepState.validObservations,
     updatedAt: new Date().toISOString(),
     hottest: sweepState.hottest,
     coldest: sweepState.coldest,
+    windiest: sweepState.windiest,
+    highestPressure: sweepState.highestPressure,
+    lowestPressure: sweepState.lowestPressure,
     loading: false,
     error: null,
     cycleStationsScanned: STATIONS_PER_CYCLE,
