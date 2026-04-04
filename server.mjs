@@ -215,7 +215,12 @@ async function getLatestObservation(station) {
       temperatureF: (props.temperature.value * 9) / 5 + 32,
 
       windGustMps,
-      windGustMph: mpsToMph(windGustMps),
+      let windGustMph = mpsToMph(windGustMps);
+
+if (windGustMph != null && windGustMph > 150) {
+  windGustMph = null;
+}  
+    windGustMph: mpsToMph(windGustMps),
 
       barometricPressurePa,
       barometricPressureInHg: paToInHg(barometricPressurePa),
