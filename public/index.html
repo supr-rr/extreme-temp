@@ -120,7 +120,7 @@
         <p style="color:#bbb;font-size:14px;">station: ${item.stationId}</p>
         <p>${fmtTempF(item.temperatureF)}</p>
         <p>${item.textDescription || ""}</p>
-        <p>observed: ${fmtTime(item.timestamp)}</p>
+        <p>${fmtTime(item.timestamp)}</p>
         ${forecastLink(item)}
       `;
     }
@@ -140,7 +140,7 @@
         <p style="color:#bbb;font-size:14px;">station: ${item.stationId}</p>
         <p>${fmtWindMph(item.windGustMph)}</p>
         <p>${item.textDescription || ""}</p>
-        <p>observed: ${fmtTime(item.timestamp)}</p>
+        <p>${fmtTime(item.timestamp)}</p>
         ${forecastLink(item)}
       `;
     }
