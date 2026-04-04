@@ -203,13 +203,22 @@ async function getLatestObservation(station) {
     if (!isFresh(props.timestamp)) return null;
 
     const windGustMps = props.windGust?.value ?? null;
-    const barometricPressurePa = props.barometricPressure?.value ?? null;
+    const seaLevelPressurePa = props.seaLevelPressure?.value ?? null;
+
+let pressureInHg = paToInHg(seaLevelPressurePa);
+
+// Throw out impossible / junk pressure values
+if (pressureInHg != null && (pressureInHg < 28.0 || pressureInHg > 32.5)) {
+  pressureInHg = null;
+}
 
     return {
       stationId: station.id,
       stationName: station.name,
       latitude: station.latitude,
       longitude: station.longitude,
+      barometricPressurePa: seaLevelPressurePa,
+      barometricPressureInHg: pressureInHg,
 
       temperatureC: props.temperature.value,
       temperatureF: (props.temperature.value * 9) / 5 + 32,
